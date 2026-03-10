@@ -1,0 +1,34 @@
+{% extends '_layouts/elementindex' %}
+
+{% set title = 'Email Templates' %}
+{% set elementType = elementType %}
+{% set newElementUrl = url('craft-dispatch/new') %}
+
+{% block content %}
+    {% if syncStatus.unlinked is not empty %}
+        {% set count = syncStatus.unlinked|length %}
+        <div class="readable" style="margin-bottom: 24px;">
+            <blockquote class="note">
+                <p>
+                    <strong>{{ count }} hook{{ count > 1 ? 's' : '' }}</strong> {{ count == 1 ? 'has' : 'have' }} no template yet.
+                </p>
+            </blockquote>
+            <div class="buttons" style="margin-top: 8px;">
+                <a href="{{ url('craft-dispatch/new') }}" class="btn submit">Create Template</a>
+            </div>
+        </div>
+    {% endif %}
+
+    {% if syncStatus.orphaned is not empty %}
+        {% set count = syncStatus.orphaned|length %}
+        <div class="readable" style="margin-bottom: 24px;">
+            <blockquote class="note warning">
+                <p>
+                    <strong>{{ count }} template{{ count > 1 ? 's' : '' }}</strong> {{ count == 1 ? 'is' : 'are' }} not linked to any hook in config.
+                </p>
+            </blockquote>
+        </div>
+    {% endif %}
+
+    {{ parent() }}
+{% endblock %}

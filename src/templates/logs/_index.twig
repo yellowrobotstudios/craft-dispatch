@@ -1,0 +1,52 @@
+{% extends '_layouts/cp' %}
+
+{% set title = 'Email Logs' %}
+
+{% block content %}
+    {% if logs|length %}
+        <table class="data fullwidth">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Template</th>
+                    <th>Recipient</th>
+                    <th>Subject</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for log in logs %}
+                    <tr>
+                        <td><a href="{{ url('craft-dispatch/logs/' ~ log.id) }}">{{ log.dateSent|datetime('short') }}</a></td>
+                        <td><code>{{ log.templateHandle }}</code></td>
+                        <td>{{ log.recipient }}</td>
+                        <td>{{ log.subject }}</td>
+                        <td>
+                            {% if log.status == 'sent' %}
+                                <span class="status green"></span> Sent
+                            {% elseif log.status == 'failed' %}
+                                <span class="status red"></span> Failed
+                            {% else %}
+                                <span class="status orange"></span> {{ log.status|title }}
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        {% if total > limit %}
+            <div class="flex flex-nowrap" style="margin-top: 16px; justify-content: center;">
+                {% if page > 1 %}
+                    <a href="{{ url('craft-dispatch/logs', { page: page - 1 }) }}" class="btn">Previous</a>
+                {% endif %}
+                <span class="btn disabled">Page {{ page }} of {{ (total / limit)|round(0, 'ceil') }}</span>
+                {% if page * limit < total %}
+                    <a href="{{ url('craft-dispatch/logs', { page: page + 1 }) }}" class="btn">Next</a>
+                {% endif %}
+            </div>
+        {% endif %}
+    {% else %}
+        <p>No emails have been sent yet.</p>
+    {% endif %}
+{% endblock %}

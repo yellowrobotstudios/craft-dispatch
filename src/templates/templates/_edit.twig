@@ -1,0 +1,519 @@
+{% import '_includes/forms' as forms %}
+{% extends '_layouts/cp' %}
+
+{% set title = title %}
+{% set fullPageForm = true %}
+{% set saveShortcutRedirect = 'craft-dispatch/edit/{id}' %}
+
+{% block actionButton %}
+    <div class="btngroup">
+        <input type="submit" class="btn submit" value="Save">
+    </div>
+{% endblock %}
+
+{% block content %}
+    {{ actionInput('craft-dispatch/templates/save') }}
+    {{ redirectInput('craft-dispatch') }}
+
+    {% if element.id %}
+        {{ hiddenInput('elementId', element.id) }}
+    {% endif %}
+
+    <div id="fields">
+        <div class="field" id="handle-field">
+            <div class="heading">
+                <label for="handle" class="required">Hook</label>
+                <div class="instructions"><p>Select which config hook this template is linked to.</p></div>
+            </div>
+            <div class="input ltr">
+                {% if hookOptions is defined and hookOptions|length %}
+                    <div class="select">
+                        <select id="handle" name="handle" required>
+                            <option value="">Select a hook…</option>
+                            {% for option in hookOptions %}
+                                <option value="{{ option.value }}" {{ element.handle == option.value ? 'selected' }}>{{ option.label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                {% else %}
+                    <p class="light">All hooks already have templates linked.</p>
+                    {% if element.handle %}
+                        <input type="hidden" id="handle" name="handle" value="{{ element.handle }}">
+                        <p><code>{{ element.handle }}</code></p>
+                    {% endif %}
+                {% endif %}
+            </div>
+            {% if element.getErrors('handle') %}
+                <ul class="errors">
+                    {% for error in element.getErrors('handle') %}
+                        <li>{{ error }}</li>
+                    {% endfor %}
+                </ul>
+            {% endif %}
+        </div>
+
+        <div class="field" id="title-field">
+            <div class="heading">
+                <label for="title" class="required">Title</label>
+            </div>
+            <div class="input ltr">
+                <input type="text" id="title" name="title" class="text fullwidth" value="{{ element.title }}" required>
+            </div>
+            {% if element.getErrors('title') %}
+                <ul class="errors">
+                    {% for error in element.getErrors('title') %}
+                        <li>{{ error }}</li>
+                    {% endfor %}
+                </ul>
+            {% endif %}
+        </div>
+
+        <div class="field" id="subject-field">
+            <div class="heading">
+                <label for="subject" class="required">Subject</label>
+                <div class="instructions"><p>Twig is supported. E.g., <code>Welcome, {{ '{{' }} name {{ '}}' }}!</code></p></div>
+            </div>
+            <div class="input ltr">
+                <input type="text" id="subject" name="subject" class="text fullwidth" value="{{ element.subject }}" required>
+            </div>
+            {% if element.getErrors('subject') %}
+                <ul class="errors">
+                    {% for error in element.getErrors('subject') %}
+                        <li>{{ error }}</li>
+                    {% endfor %}
+                </ul>
+            {% endif %}
+        </div>
+
+        <div class="field" id="htmlBody-field">
+            <div class="heading">
+                <label for="htmlBody" class="required">HTML Body</label>
+                <div class="instructions"><p>Twig template for the HTML email body.</p></div>
+            </div>
+            <div class="input ltr">
+                <textarea id="htmlBody" name="htmlBody" class="text fullwidth" rows="16" required style="font-family:monospace; font-size:13px; tab-size:2; white-space:pre; overflow-x:auto;">{{ element.htmlBody }}</textarea>
+            </div>
+            {% if element.getErrors('htmlBody') %}
+                <ul class="errors">
+                    {% for error in element.getErrors('htmlBody') %}
+                        <li>{{ error }}</li>
+                    {% endfor %}
+                </ul>
+            {% endif %}
+        </div>
+
+        <div class="field" id="textBody-field">
+            <div class="heading">
+                <label for="textBody">Plain Text Body</label>
+                <div class="instructions"><p>Optional. If blank, plain text will be auto-generated from the HTML body.</p></div>
+            </div>
+            <div class="input ltr">
+                <textarea id="textBody" name="textBody" class="text fullwidth code" rows="8">{{ element.textBody }}</textarea>
+            </div>
+        </div>
+
+        {% if previewElementType is defined and previewElementType %}
+            {{ hiddenInput('previewElementType', previewElementType, { id: 'preview-element-type' }) }}
+            {{ hiddenInput('previewElementId', '', { id: 'preview-element-id' }) }}
+
+            <hr>
+
+            {# Preview toolbar #}
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+                <div style="display:flex; align-items:center; gap:12px;">
+                    <h2 style="margin:0;">Preview</h2>
+                    <div id="preview-element-select" style="display:inline-flex; align-items:center; gap:8px;"></div>
+                    <button type="button" id="preview-render-btn" class="btn submit small" disabled>Render</button>
+                </div>
+                {# Channel / format toggles — built dynamically from hook channels #}
+                <div class="btngroup small" id="preview-mode-toggles" style="display:none;">
+                    {% set channels = hookInfo is defined and hookInfo ? hookInfo.channels : ['email'] %}
+                    {% if 'email' in channels %}
+                        <button type="button" class="btn active" data-preview-mode="html">HTML</button>
+                        <button type="button" class="btn" data-preview-mode="text">Text</button>
+                    {% endif %}
+                    {% if 'slack' in channels %}
+                        <button type="button" class="btn{% if 'email' not in channels %} active{% endif %}" data-preview-mode="slack">Slack</button>
+                    {% endif %}
+                    {% if 'webhook' in channels %}
+                        <button type="button" class="btn{% if 'email' not in channels and 'slack' not in channels %} active{% endif %}" data-preview-mode="webhook">Webhook</button>
+                    {% endif %}
+                </div>
+            </div>
+
+            {# Rendered subject #}
+            <div id="preview-subject" style="display:none; margin-bottom:16px; padding:12px 16px; background:#f3f4f6; border:1px solid #e3e5e8; border-radius:6px;">
+                <div style="font-size:11px; text-transform:uppercase; letter-spacing:0.05em; color:#9ca3af; margin-bottom:4px;">Subject</div>
+                <div id="preview-subject-text" style="font-size:16px; font-weight:600; color:#1f2937;"></div>
+            </div>
+
+            {# Error #}
+            <div id="preview-error" class="error" style="display:none; margin-bottom:16px;"></div>
+
+            {# Preview frame container #}
+            <div id="preview-frame-container" style="display:none; border:1px solid #e3e5e8; border-radius:8px; background:#f9fafb; padding:24px;">
+                <div id="preview-iframe-wrap" style="position:relative; margin:0 auto; width:100%; max-width:100%;">
+                    <iframe id="preview-iframe" style="width:100%; border:1px solid #e3e5e8; border-radius:4px; background:#fff; min-height:400px;" sandbox="allow-same-origin"></iframe>
+                    {# Drag handle — right edge #}
+                    <div id="preview-resize-handle" style="position:absolute; top:0; right:-12px; width:24px; height:100%; cursor:col-resize; display:flex; align-items:center; justify-content:center;">
+                        <div style="width:4px; height:48px; background:#cbd5e1; border-radius:2px;"></div>
+                    </div>
+                </div>
+                <div id="preview-width-label" style="text-align:center; margin-top:8px; font-size:12px; color:#9ca3af; display:none;"></div>
+            </div>
+            <div id="preview-text-container" style="display:none; border:1px solid #e3e5e8; border-radius:8px; padding:24px; background:#fff; white-space:pre-wrap; font-family:monospace; font-size:13px; min-height:200px;"></div>
+
+            {# Slack preview #}
+            <div id="preview-slack-container" style="display:none;">
+                <div style="border:1px solid #e3e5e8; border-radius:8px; background:#1a1d21; padding:16px 20px; min-height:120px; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; font-size:15px; color:#d1d2d3; line-height:1.46;">
+                    <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+                        <span style="width:36px; height:36px; border-radius:4px; background:#4a154b; display:inline-flex; align-items:center; justify-content:center; font-weight:700; color:#fff; font-size:14px;">D</span>
+                        <span style="font-weight:900; color:#f2f3f5;">Dispatch</span>
+                        <span style="font-size:12px; color:#ababad;">via app</span>
+                    </div>
+                    <div id="preview-slack-text" style="white-space:pre-wrap; word-break:break-word;"></div>
+                </div>
+            </div>
+
+            {# Webhook JSON preview #}
+            <div id="preview-webhook-container" style="display:none; border:1px solid #e3e5e8; border-radius:8px; padding:24px; background:#1e1e2e; min-height:120px;">
+                <pre id="preview-webhook-json" style="margin:0; color:#cdd6f4; font-size:13px; line-height:1.5; white-space:pre-wrap; word-break:break-word;"></pre>
+            </div>
+
+            {# Empty state #}
+            <div id="preview-empty" style="border:2px dashed #d1d5db; border-radius:8px; padding:48px; text-align:center; color:#9ca3af;">
+                <p style="margin:0; font-size:15px;">Select a {{ previewElementLabel|lower }} and click Render to preview this email.</p>
+            </div>
+        {% endif %}
+    </div>
+
+{% endblock %}
+
+{% block details %}
+    <div class="meta">
+        {{ forms.lightswitchField({
+            label: 'Enabled',
+            id: 'enabled-toggle',
+            name: 'enabled',
+            on: element.enabled,
+        }) }}
+    </div>
+
+    {% if hookInfo %}
+        <hr>
+        <div class="meta read-only">
+            <div class="data">
+                <div class="heading">Event <span class="info">The Craft event that triggers this email.</span></div>
+                <div class="value"><code>{{ hookInfo.event }}</code></div>
+            </div>
+            <div class="data">
+                <div class="heading">Channels <span class="info">How this notification is delivered (e.g. email, Slack, webhook).</span></div>
+                <div class="value">{{ hookInfo.channels|join(', ') }}</div>
+            </div>
+            <div class="data">
+                <div class="heading">Send Mode <span class="info">'Individual' sends a separate email per recipient. 'List' sends one email with all recipients.</span></div>
+                <div class="value">{{ hookInfo.sendMode }}</div>
+            </div>
+            {% if hookInfo.to %}
+                <div class="data">
+                    <div class="heading">To <span class="info">The recipient(s) resolved from the config hook. 'Dynamic' means recipients are determined per entry at send time.</span></div>
+                    <div class="value">{{ hookInfo.to.resolved ? hookInfo.to.value : 'Dynamic (per entry)' }}</div>
+                </div>
+            {% endif %}
+            {% if hookInfo.cc %}
+                <div class="data">
+                    <div class="heading">CC <span class="info">Carbon copy recipients resolved from the config hook.</span></div>
+                    <div class="value">{{ hookInfo.cc.resolved ? hookInfo.cc.value : 'Dynamic (per entry)' }}</div>
+                </div>
+            {% endif %}
+            {% if hookInfo.bcc %}
+                <div class="data">
+                    <div class="heading">BCC <span class="info">Blind carbon copy recipients resolved from the config hook.</span></div>
+                    <div class="value">{{ hookInfo.bcc.resolved ? hookInfo.bcc.value : 'Dynamic (per entry)' }}</div>
+                </div>
+            {% endif %}
+            {% if hookInfo.condition %}
+                <div class="data">
+                    <div class="heading">Condition <span class="info">A guard condition in the config controls whether this email is sent. The email only fires when the condition passes.</span></div>
+                    <div class="value"><span class="status green"></span> Has guard</div>
+                </div>
+            {% endif %}
+            {% if hookInfo.layout %}
+                <div class="data">
+                    <div class="heading">Layout <span class="info">A Twig layout template that wraps the email body. Set in the config hook or as a global default.</span></div>
+                    <div class="value"><code>{{ hookInfo.layout }}</code></div>
+                </div>
+            {% endif %}
+        </div>
+    {% elseif not isNew %}
+        <hr>
+        <div class="meta read-only">
+            <div class="data">
+                <div class="value" style="color:#9ca3af;">No config hook found for this handle.</div>
+            </div>
+        </div>
+    {% endif %}
+{% endblock %}
+
+{% css %}
+    .hook-source-reveal {
+        cursor: pointer !important;
+        color: #6366f1 !important;
+        font-size: 11px;
+        margin-left: 4px;
+    }
+    .hook-source-reveal:hover {
+        text-decoration: underline;
+        color: #4f46e5 !important;
+    }
+    .hook-source-code {
+        margin: 6px 0 0;
+        padding: 8px 10px;
+        background: #1e1e2e;
+        color: #cdd6f4;
+        border-radius: 4px;
+        font-size: 11px;
+        line-height: 1.5;
+        overflow-x: auto;
+        white-space: pre;
+    }
+{% endcss %}
+
+{% js %}
+(function() {
+    // Auto-populate title and subject when hook is selected on new templates
+    var handleSelect = document.getElementById('handle');
+    if (handleSelect && handleSelect.tagName === 'SELECT') {
+        handleSelect.addEventListener('change', function() {
+            var titleField = document.getElementById('title');
+            var subjectField = document.getElementById('subject');
+            var handle = this.value;
+            if (!handle) return;
+            var label = handle.replace(/-/g, ' ').replace(/\b\w/g, function(c) { return c.toUpperCase(); });
+            if (!titleField.value) titleField.value = label;
+            if (!subjectField.value) subjectField.value = label;
+        });
+    }
+
+    // Hook source code toggles
+    document.querySelectorAll('.hook-source-reveal').forEach(function(link) {
+        link.addEventListener('click', function() {
+            var pre = link.closest('.data').querySelector('.hook-source-code');
+            if (pre.style.display === 'none') {
+                pre.style.display = 'block';
+                link.textContent = 'hide';
+            } else {
+                pre.style.display = 'none';
+                link.textContent = 'show';
+            }
+        });
+    });
+    {% if previewElementType is defined and previewElementType %}
+        var $selectContainer = $('#preview-element-select');
+        var renderBtn = document.getElementById('preview-render-btn');
+        var modeToggles = document.getElementById('preview-mode-toggles');
+        var selectedElementId = null;
+
+        // Element picker — inline button
+        function showSelectButton() {
+            $selectContainer.html('<button type="button" class="btn small" id="select-element-btn">Select {{ previewElementLabel }}</button>');
+            document.getElementById('select-element-btn').addEventListener('click', openSelector);
+        }
+
+        function openSelector() {
+            var $trigger = $selectContainer.find('button').first();
+            Craft.createElementSelectorModal('{{ previewElementType|e("js") }}', {
+                multiSelect: false,
+                sources: {{ previewSources is defined and previewSources ? previewSources|json_encode(constant('JSON_HEX_TAG') b-or constant('JSON_HEX_AMP'))|raw : '"*"' }},
+                criteria: {{ previewCriteria is defined and previewCriteria ? previewCriteria|json_encode(constant('JSON_HEX_TAG') b-or constant('JSON_HEX_AMP'))|raw : '{}' }},
+                $triggerElement: $trigger,
+                onSelect: function(elements) {
+                    if (elements.length) {
+                        selectedElementId = elements[0].id;
+                        document.getElementById('preview-element-id').value = selectedElementId;
+                        $selectContainer.html(
+                            '<span class="status green" style="margin-right:4px;"></span>' +
+                            '<span style="font-weight:500;">' + Craft.escapeHtml(elements[0].label) + '</span>' +
+                            '&nbsp;<button type="button" class="btn small" id="change-element-btn">Change</button>'
+                        );
+                        document.getElementById('change-element-btn').addEventListener('click', openSelector);
+                        renderBtn.disabled = false;
+                    }
+                },
+            });
+        }
+
+        showSelectButton();
+
+        // Render preview
+        renderBtn.addEventListener('click', function() {
+            if (!selectedElementId) return;
+
+            renderBtn.disabled = true;
+            renderBtn.textContent = 'Rendering...';
+
+            var data = {
+                handle: document.getElementById('handle').value,
+                subject: document.getElementById('subject').value,
+                htmlBody: document.getElementById('htmlBody').value,
+                textBody: document.getElementById('textBody').value,
+                previewElementId: selectedElementId,
+                previewElementType: document.getElementById('preview-element-type').value,
+            };
+
+            fetch(Craft.getActionUrl('craft-dispatch/templates/preview'), {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-Token': Craft.csrfTokenValue,
+                },
+                body: JSON.stringify(data),
+            })
+            .then(function(r) { return r.json(); })
+            .then(function(result) {
+                renderBtn.disabled = false;
+                renderBtn.textContent = 'Render';
+
+                var errorEl = document.getElementById('preview-error');
+                var emptyEl = document.getElementById('preview-empty');
+                var subjectEl = document.getElementById('preview-subject');
+                var frameContainer = document.getElementById('preview-frame-container');
+                var textContainer = document.getElementById('preview-text-container');
+
+                if (result.success) {
+                    errorEl.style.display = 'none';
+                    emptyEl.style.display = 'none';
+
+                    // Subject
+                    subjectEl.style.display = 'block';
+                    document.getElementById('preview-subject-text').textContent = result.subject;
+
+                    // Write HTML to iframe via srcdoc to honour sandbox
+                    var iframe = document.getElementById('preview-iframe');
+                    iframe.srcdoc = result.html;
+
+                    // Auto-resize iframe height after content loads
+                    iframe.onload = function() {
+                        try {
+                            var h = iframe.contentDocument.documentElement.scrollHeight;
+                            iframe.style.height = Math.max(h, 200) + 'px';
+                        } catch(e) {}
+                    };
+
+                    // Store text
+                    textContainer.textContent = result.text;
+
+                    // Populate Slack preview
+                    var slackContainer = document.getElementById('preview-slack-container');
+                    var slackText = document.getElementById('preview-slack-text');
+                    if (slackText) {
+                        slackText.innerHTML = '<strong>' + Craft.escapeHtml(result.subject) + '</strong>\n\n' + Craft.escapeHtml(result.text);
+                    }
+
+                    // Populate Webhook JSON preview
+                    var webhookContainer = document.getElementById('preview-webhook-container');
+                    var webhookJson = document.getElementById('preview-webhook-json');
+                    if (webhookJson) {
+                        webhookJson.textContent = JSON.stringify({
+                            handle: document.getElementById('handle').value,
+                            subject: result.subject,
+                            html: result.html,
+                            text: result.text,
+                            recipients: ['(resolved at send time)']
+                        }, null, 2);
+                    }
+
+                    // Show the active mode and toggles
+                    modeToggles.style.display = 'inline-flex';
+                    showPreviewMode(modeToggles.querySelector('.btn.active').getAttribute('data-preview-mode'));
+                } else {
+                    emptyEl.style.display = 'none';
+                    subjectEl.style.display = 'none';
+                    frameContainer.style.display = 'none';
+                    textContainer.style.display = 'none';
+                    if (document.getElementById('preview-slack-container')) document.getElementById('preview-slack-container').style.display = 'none';
+                    if (document.getElementById('preview-webhook-container')) document.getElementById('preview-webhook-container').style.display = 'none';
+                    modeToggles.style.display = 'none';
+                    errorEl.textContent = result.error;
+                    errorEl.style.display = 'block';
+                }
+            })
+            .catch(function(err) {
+                renderBtn.disabled = false;
+                renderBtn.textContent = 'Render';
+                document.getElementById('preview-error').textContent = 'Request failed: ' + err.message;
+                document.getElementById('preview-error').style.display = 'block';
+            });
+        });
+
+        // Draggable resize handle
+        (function() {
+            var handle = document.getElementById('preview-resize-handle');
+            var wrap = document.getElementById('preview-iframe-wrap');
+            var container = document.getElementById('preview-frame-container');
+            var label = document.getElementById('preview-width-label');
+            var iframe = document.getElementById('preview-iframe');
+            var dragging = false;
+
+            if (!handle) return;
+
+            handle.addEventListener('mousedown', function(e) {
+                e.preventDefault();
+                dragging = true;
+                label.style.display = 'block';
+                // Prevent iframe from eating mouse events while dragging
+                iframe.style.pointerEvents = 'none';
+                document.body.style.cursor = 'col-resize';
+                document.body.style.userSelect = 'none';
+            });
+
+            document.addEventListener('mousemove', function(e) {
+                if (!dragging) return;
+                var containerRect = container.getBoundingClientRect();
+                var containerCenter = containerRect.left + containerRect.width / 2;
+                // Distance from center to mouse = half the desired width
+                var halfWidth = Math.abs(e.clientX - containerCenter);
+                var newWidth = Math.min(Math.max(halfWidth * 2, 280), containerRect.width - 48);
+                wrap.style.width = Math.round(newWidth) + 'px';
+                label.textContent = Math.round(newWidth) + 'px';
+            });
+
+            document.addEventListener('mouseup', function() {
+                if (!dragging) return;
+                dragging = false;
+                iframe.style.pointerEvents = '';
+                document.body.style.cursor = '';
+                document.body.style.userSelect = '';
+                // Hide label after a moment
+                setTimeout(function() { label.style.display = 'none'; }, 1500);
+            });
+        })();
+
+        // Unified channel/format toggle
+        var allPreviewPanes = {
+            html: document.getElementById('preview-frame-container'),
+            text: document.getElementById('preview-text-container'),
+            slack: document.getElementById('preview-slack-container'),
+            webhook: document.getElementById('preview-webhook-container'),
+        };
+
+        function showPreviewMode(mode) {
+            Object.keys(allPreviewPanes).forEach(function(key) {
+                if (allPreviewPanes[key]) {
+                    allPreviewPanes[key].style.display = key === mode ? 'block' : 'none';
+                }
+            });
+            modeToggles.querySelectorAll('.btn').forEach(function(btn) {
+                btn.classList.toggle('active', btn.getAttribute('data-preview-mode') === mode);
+            });
+        }
+
+        modeToggles.querySelectorAll('.btn').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                showPreviewMode(this.getAttribute('data-preview-mode'));
+            });
+        });
+    {% endif %}
+})();
+{% endjs %}

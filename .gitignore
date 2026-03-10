@@ -1,0 +1,6 @@
+/vendor/
+.env
+.phpunit.result.cache
+.phpstan/
+/node_modules/
+.DS_Store
