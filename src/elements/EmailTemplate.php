@@ -56,6 +56,11 @@ class EmailTemplate extends Element
 
     public function getFieldLayout(): ?FieldLayout
     {
+        return self::createFieldLayout();
+    }
+
+    public static function createFieldLayout(): FieldLayout
+    {
         $layout = new FieldLayout();
         $layout->type = static::class;
 
@@ -92,6 +97,7 @@ class EmailTemplate extends Element
                 'rows' => 8,
                 'code' => true,
             ]),
+            new \yellowrobot\craftdispatch\fieldlayoutelements\PreviewField(),
         ]);
 
         $layout->setTabs([$tab]);

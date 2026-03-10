@@ -5,18 +5,12 @@ namespace yellowrobot\craftdispatch;
 use Craft;
 use craft\base\Model;
 use craft\base\Plugin;
-use craft\events\DefineFieldLayoutFieldsEvent;
 use craft\events\RegisterComponentTypesEvent;
 use craft\events\RegisterUserPermissionsEvent;
 use craft\events\RegisterUrlRulesEvent;
-use craft\fieldlayoutelements\TextField;
-use craft\fieldlayoutelements\TitleField;
-use craft\models\FieldLayout;
 use craft\services\Elements;
 use craft\services\UserPermissions;
 use craft\web\UrlManager;
-use yellowrobot\craftdispatch\elements\EmailTemplate;
-use yellowrobot\craftdispatch\fieldlayoutelements\TextareaField;
 use yellowrobot\craftdispatch\engines\EmailEngine;
 use yellowrobot\craftdispatch\engines\SlackEngine;
 use yellowrobot\craftdispatch\engines\SmsEngine;
@@ -54,7 +48,6 @@ class CraftDispatch extends Plugin
         ]);
 
         $this->_registerElementTypes();
-        $this->_registerNativeFields();
         $this->_registerCpRoutes();
         $this->_registerPermissions();
 
@@ -96,54 +89,7 @@ class CraftDispatch extends Plugin
         );
     }
 
-    private function _registerNativeFields(): void
-    {
-        Event::on(
-            FieldLayout::class,
-            FieldLayout::EVENT_DEFINE_NATIVE_FIELDS,
-            function (DefineFieldLayoutFieldsEvent $event) {
-                if ($event->sender->type !== EmailTemplate::class) {
-                    return;
-                }
 
-                $event->fields[] = [
-                    'class' => TitleField::class,
-                    'mandatory' => true,
-                ];
-
-                $event->fields[] = [
-                    'class' => TextField::class,
-                    'attribute' => 'subject',
-                    'label' => 'Subject',
-                    'instructions' => 'Twig is supported. E.g., `Welcome, {{ name }}!`',
-                    'mandatory' => true,
-                    'required' => true,
-                ];
-
-                $event->fields[] = [
-                    'class' => TextareaField::class,
-                    'attribute' => 'htmlBody',
-                    'label' => 'HTML Body',
-                    'instructions' => 'Twig template for the HTML email body.',
-                    'mandatory' => true,
-                    'required' => true,
-                    'rows' => 16,
-                    'code' => true,
-                ];
-
-                $event->fields[] = [
-                    'class' => TextareaField::class,
-                    'attribute' => 'textBody',
-                    'label' => 'Plain Text Body',
-                    'instructions' => 'Optional. If blank, plain text will be auto-generated from the HTML body.',
-                    'mandatory' => true,
-                    'required' => false,
-                    'rows' => 8,
-                    'code' => true,
-                ];
-            }
-        );
-    }
 
     private function _registerCpRoutes(): void
     {
