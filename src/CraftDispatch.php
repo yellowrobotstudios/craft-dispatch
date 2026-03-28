@@ -11,6 +11,7 @@ use craft\events\RegisterUrlRulesEvent;
 use craft\services\Elements;
 use craft\services\UserPermissions;
 use craft\web\UrlManager;
+use yellowrobot\craftdispatch\elements\EmailTemplate;
 use yellowrobot\craftdispatch\engines\EmailEngine;
 use yellowrobot\craftdispatch\engines\SlackEngine;
 use yellowrobot\craftdispatch\engines\SmsEngine;
