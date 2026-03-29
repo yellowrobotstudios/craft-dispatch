@@ -31,4 +31,4 @@ jobs:
         run: vendor/bin/phpunit
 
       - name: Run PHPStan
-        run: vendor/bin/phpstan analyse src --memory-limit=256M
+        run: vendor/bin/phpstan analyse --memory-limit=256M
